@@ -164,6 +164,24 @@ def post_scan():
     return result
 
 
+@app.get("/test-telegram")
+def test_telegram():
+    """Send a test message to Telegram. Returns success/failure."""
+    import os
+    token = os.getenv("TELEGRAM_BOT_TOKEN")
+    chat_id = os.getenv("TELEGRAM_CHAT_ID")
+    if not token or not chat_id:
+        return {"ok": False, "error": "TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID not set"}
+    try:
+        import httpx
+        url = f"https://api.telegram.org/bot{token}/sendMessage"
+        r = httpx.post(url, json={"chat_id": chat_id, "text": "✅ RADAR — Test réussi ! Le bot est configuré."}, timeout=10)
+        r.raise_for_status()
+        return {"ok": True, "message": "Message envoyé"}
+    except Exception as e:
+        return {"ok": False, "error": str(e)}
+
+
 @app.get("/health")
 def get_health():
     """Health check with next scan time."""
