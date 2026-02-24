@@ -5,7 +5,6 @@ import asyncio
 import logging
 import os
 from datetime import datetime
-from statistics import median
 
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.interval import IntervalTrigger
@@ -13,7 +12,7 @@ from apscheduler.triggers.interval import IntervalTrigger
 from alerts import send_telegram_alert
 from database import (
     get_all_products,
-    get_price_history_30d,
+    get_oldest_price,
     get_recent_alerts_for_product,
     insert_alert,
     insert_price_history,
@@ -25,17 +24,11 @@ ANTI_SPAM_HOURS = 6
 
 logger = logging.getLogger(__name__)
 scheduler = BackgroundScheduler()
-def _compute_median(prices: list[dict]) -> float | None:
-    """Compute median from list of price dicts."""
-    values = [float(p["price"]) for p in prices if p.get("price") is not None]
-    if not values:
-        return None
-    return median(values)
 
 
 async def _scan_product(product: dict) -> tuple[bool, bool]:
     """
-    Scan a single product: fetch price, save to history, check for dip, send alert if needed.
+    Scan a single product: fetch price, save to history, compare vs reference_price, send alert if needed.
     Returns (price_updated, alert_sent).
     """
     product_id = product["id"]
@@ -48,12 +41,15 @@ async def _scan_product(product: dict) -> tuple[bool, bool]:
 
     insert_price_history(product_id, price)
 
-    history = get_price_history_30d(product_id)
-    median_price = _compute_median(history)
-    if median_price is None or median_price <= 0:
+    reference_price = product.get("reference_price")
+    if reference_price is not None:
+        reference_price = float(reference_price)
+    if reference_price is None or reference_price <= 0:
+        reference_price = get_oldest_price(product_id)
+    if reference_price is None or reference_price <= 0:
         return True, False
 
-    discount_pct = (median_price - price) / median_price * 100
+    discount_pct = (reference_price - price) / reference_price * 100
 
     threshold = float(product.get("dip_threshold") or DEFAULT_DIP_THRESHOLD)
     if discount_pct >= threshold:
@@ -64,7 +60,7 @@ async def _scan_product(product: dict) -> tuple[bool, bool]:
                 "product_name": name,
                 "slug": slug,
                 "alert_price": price,
-                "median_price": median_price,
+                "median_price": reference_price,
                 "discount_pct": discount_pct,
             }
             insert_alert(
@@ -72,7 +68,7 @@ async def _scan_product(product: dict) -> tuple[bool, bool]:
                 product_name=name,
                 slug=slug,
                 alert_price=price,
-                median_price=median_price,
+                median_price=reference_price,
                 discount_pct=discount_pct,
             )
             send_telegram_alert(alert_data)
