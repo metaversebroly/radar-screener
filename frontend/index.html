@@ -218,6 +218,7 @@
       color: var(--text);
       border-radius: 4px;
       transition: border-color 0.2s;
+      touch-action: manipulation;
     }
 
     .add-form input::placeholder { color: var(--text-dim); }
@@ -589,6 +590,16 @@
         padding: 16px;
       }
 
+      .add-form input {
+        width: 100%;
+        min-width: 0;
+        font-size: 16px;
+        -webkit-appearance: none;
+        appearance: none;
+        position: relative;
+        z-index: 1;
+      }
+
       .add-form input[type="number"] { width: 100%; }
 
       .btn-add { width: 100%; min-height: 48px; }
@@ -749,7 +760,7 @@
       <div class="panel">
         <h2 class="panel-title">Watchlist</h2>
         <form class="add-form" id="add-form">
-          <input type="url" id="url-input" placeholder="https://stockx.com/fr/labubu-the-monsters-zimomo" required>
+          <input type="text" inputmode="url" id="url-input" placeholder="https://stockx.com/fr/labubu-the-monsters-zimomo" required autocomplete="off">
           <input type="number" id="threshold-input" min="1" max="99" value="15" title="Seuil % pour alerte" placeholder="15">
           <button type="submit" class="btn btn-add">AJOUTER</button>
         </form>
