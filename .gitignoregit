@@ -1,0 +1,1 @@
+"# Env files.env*.env# Python__pycache__/*.pyc*.pyo.venv/venv/env/# Nodenode_modules/# OS.DS_StoreThumbs.db"  add .gitignoregit add .git commit -m "init: radar screener full app"git remote set-url origin https://github.com/metaverbroly/radar-screener.gitgit push -u origin main
