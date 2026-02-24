@@ -18,10 +18,14 @@ from database import (
     delete_product,
     get_all_products,
     get_product_by_slug,
+    get_oldest_price,
     get_price_history_30d,
     get_recent_alerts,
+    get_recent_scans,
+    insert_price_history,
     update_product_threshold,
 )
+from retailed import get_lowest_ask
 from scheduler import get_next_scan_time, scan_all_products, start_scheduler
 
 logging.basicConfig(level=logging.INFO)
@@ -62,19 +66,23 @@ def _compute_median(prices: list[dict]) -> float | None:
 
 
 def _enrich_product(product: dict) -> dict:
-    """Add last_price, median_30d, discount_pct to product."""
+    """Add last_price, reference_price, discount_pct to product."""
     history = get_price_history_30d(product["id"])
-    median_price = _compute_median(history)
     last_price = float(history[-1]["price"]) if history else None
+    reference_price = product.get("reference_price")
+    if reference_price is not None:
+        reference_price = float(reference_price)
+    if reference_price is None:
+        reference_price = get_oldest_price(product["id"])
 
     discount_pct = None
-    if last_price is not None and median_price is not None and median_price > 0:
-        discount_pct = (median_price - last_price) / median_price * 100
+    if last_price is not None and reference_price is not None and reference_price > 0:
+        discount_pct = (reference_price - last_price) / reference_price * 100
 
     return {
         **product,
         "last_price": last_price,
-        "median_30d": median_price,
+        "reference_price": reference_price,
         "discount_pct": discount_pct,
     }
 
@@ -112,7 +120,12 @@ def post_products(body: dict):
         threshold = 15
 
     name = _slug_to_name(slug)
-    product = create_product(slug=slug, name=name, dip_threshold=threshold)
+    import asyncio
+    price = asyncio.run(get_lowest_ask(slug))
+    if price is None:
+        raise HTTPException(502, "Impossible de récupérer le prix StockX (Retailed API)")
+    product = create_product(slug=slug, name=name, dip_threshold=threshold, reference_price=price)
+    insert_price_history(product["id"], price)
     return product
 
 
@@ -155,6 +168,12 @@ def get_products():
 def get_alerts():
     """Get the 50 most recent alerts."""
     return get_recent_alerts(50)
+
+
+@app.get("/scans")
+def get_scans():
+    """Get the 50 most recent scans."""
+    return get_recent_scans(50)
 
 
 @app.post("/scan")

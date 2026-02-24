@@ -35,6 +35,7 @@ CREATE TABLE products (
   slug text UNIQUE NOT NULL,
   name text NOT NULL,
   dip_threshold numeric DEFAULT 15,
+  reference_price numeric,
   created_at timestamp DEFAULT now()
 );
 
@@ -55,11 +56,26 @@ CREATE TABLE alerts (
   discount_pct numeric,
   triggered_at timestamp DEFAULT now()
 );
+
+CREATE TABLE scans (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  products_count integer NOT NULL,
+  dips_found integer NOT NULL,
+  scanned_at timestamp DEFAULT now()
+);
 ```
 
-**Si la table `products` existe déjà**, ajouter la colonne seuil :
+**Si les tables existent déjà**, ajouter :
 ```sql
 ALTER TABLE products ADD COLUMN IF NOT EXISTS dip_threshold numeric DEFAULT 15;
+ALTER TABLE products ADD COLUMN IF NOT EXISTS reference_price numeric;
+
+CREATE TABLE IF NOT EXISTS scans (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  products_count integer NOT NULL,
+  dips_found integer NOT NULL,
+  scanned_at timestamp DEFAULT now()
+);
 ```
 
 Récupérer `SUPABASE_URL` et `SUPABASE_KEY` (service_role) dans Settings → API.

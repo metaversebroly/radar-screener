@@ -21,10 +21,12 @@ def get_client() -> Client:
     return _client
 
 
-def create_product(slug: str, name: str, dip_threshold: float = 15) -> dict:
-    """Insert a new product and return it."""
+def create_product(slug: str, name: str, dip_threshold: float = 15, reference_price: float | None = None) -> dict:
+    """Insert a new product and return it. reference_price = prix Acheter maintenant à l'ajout."""
     client = get_client()
     data = {"slug": slug, "name": name, "dip_threshold": dip_threshold}
+    if reference_price is not None:
+        data["reference_price"] = reference_price
     result = client.table("products").insert(data).execute()
     return result.data[0]
 
@@ -80,6 +82,22 @@ def get_price_history_30d(product_id: str) -> list[dict]:
     return result.data or []
 
 
+def get_oldest_price(product_id: str) -> float | None:
+    """Get the oldest (first) price recorded for a product. Used as fallback reference_price."""
+    client = get_client()
+    result = (
+        client.table("price_history")
+        .select("price")
+        .eq("product_id", product_id)
+        .order("scanned_at", desc=False)
+        .limit(1)
+        .execute()
+    )
+    if result.data:
+        return float(result.data[0]["price"])
+    return None
+
+
 def insert_alert(
     product_id: str,
     product_name: str,
@@ -123,6 +141,27 @@ def get_recent_alerts(limit: int = 50) -> list[dict]:
         client.table("alerts")
         .select("*")
         .order("triggered_at", desc=True)
+        .limit(limit)
+        .execute()
+    )
+    return result.data or []
+
+
+def insert_scan(products_count: int, dips_found: int) -> dict:
+    """Insert a scan record."""
+    client = get_client()
+    data = {"products_count": products_count, "dips_found": dips_found}
+    result = client.table("scans").insert(data).execute()
+    return result.data[0]
+
+
+def get_recent_scans(limit: int = 50) -> list[dict]:
+    """Get the N most recent scans."""
+    client = get_client()
+    result = (
+        client.table("scans")
+        .select("*")
+        .order("scanned_at", desc=True)
         .limit(limit)
         .execute()
     )

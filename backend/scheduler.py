@@ -9,13 +9,14 @@ from datetime import datetime
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.interval import IntervalTrigger
 
-from alerts import send_telegram_alert
+from alerts import send_telegram_alert, send_telegram_scan_summary
 from database import (
     get_all_products,
     get_oldest_price,
     get_recent_alerts_for_product,
     insert_alert,
     insert_price_history,
+    insert_scan,
 )
 from retailed import rate_limited_get_lowest_ask
 
@@ -100,6 +101,20 @@ def scan_all_products() -> dict:
 
     scanned, dips_found = asyncio.run(_run())
     logger.info("Scan complete: %d products scanned, %d dips found", scanned, dips_found)
+
+    scanned_at = datetime.utcnow().isoformat() + "Z"
+    try:
+        scan_record = insert_scan(products_count=scanned, dips_found=dips_found)
+        scanned_at = scan_record.get("scanned_at", scanned_at)
+        if hasattr(scanned_at, "isoformat"):
+            scanned_at = scanned_at.isoformat()
+    except Exception as e:
+        logger.warning("Could not insert scan record: %s", e)
+
+    if dips_found == 0 and products:
+        product_list = [{"name": p.get("name", p["slug"]), "slug": p["slug"]} for p in products]
+        send_telegram_scan_summary(scanned_at, product_list, dips_found)
+
     return {"scanned": scanned, "dips_found": dips_found}
 
 

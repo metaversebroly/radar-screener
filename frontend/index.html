@@ -270,7 +270,7 @@
     .product-card-footer { display: contents; }
     .product-card .product-thumb,
     .product-card .product-thumb-placeholder { grid-column: 1; grid-row: 1; }
-    .product-card .product-info { grid-column: 2; grid-row: 1; min-width: 0; }
+    .product-card .product-info.product-link { grid-column: 2; grid-row: 1; min-width: 0; }
     .product-card .discount-badge { grid-column: 3; grid-row: 1; }
     .product-card .threshold-val { grid-column: 4; grid-row: 1; }
     .product-card .product-actions { grid-column: 5; grid-row: 1; }
@@ -331,10 +331,26 @@
     .product-link {
       color: var(--accent-yellow);
       text-decoration: none;
+      cursor: pointer;
+      display: block;
+      min-width: 0;
     }
 
     .product-link:hover {
       text-decoration: underline;
+    }
+
+    .product-thumb-link {
+      display: block;
+      cursor: pointer;
+      flex-shrink: 0;
+      width: 56px;
+      height: 56px;
+      line-height: 0;
+    }
+
+    .product-thumb-link:hover {
+      opacity: 0.9;
     }
 
     .product-prices {
@@ -505,6 +521,48 @@
       transform: translateY(-1px);
     }
 
+    .scans-panel {
+      margin-top: 24px;
+    }
+
+    .scans-list {
+      padding: 16px 24px;
+      max-height: 280px;
+      overflow-y: auto;
+    }
+
+    .scan-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 0;
+      border-bottom: 1px solid var(--border);
+      gap: 16px;
+    }
+
+    .scan-row:last-child { border-bottom: none; }
+
+    .scan-date {
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .scan-stats {
+      display: flex;
+      gap: 20px;
+      font-size: 0.9rem;
+      color: var(--text-dim);
+    }
+
+    .scan-stats .dips {
+      color: var(--accent-red);
+      font-weight: 700;
+    }
+
+    .scan-stats .dips.zero {
+      color: var(--text-dim);
+    }
+
     .empty-state {
       padding: 48px 24px;
       text-align: center;
@@ -642,13 +700,17 @@
         gap: 12px;
       }
 
+      .product-card .product-thumb-link {
+        width: 56px;
+        height: 56px;
+        flex-shrink: 0;
+      }
+
       .product-card .product-thumb,
       .product-card .product-thumb-placeholder {
         width: 56px;
         height: 56px;
         flex-shrink: 0;
-        grid-column: unset;
-        grid-row: unset;
       }
 
       .product-card .product-info {
@@ -722,6 +784,13 @@
       .panel-title { padding: 14px 16px; font-size: 1rem; }
     }
 
+    @media (max-width: 768px) {
+      .scan-row {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+    }
+
     /* Mobile compact - iPhone 14 */
     @media (max-width: 390px) {
       .stat-card .value { font-size: 1.4rem; }
@@ -773,7 +842,7 @@
           <input type="number" id="threshold-input" min="1" max="99" value="15" title="Seuil % pour alerte" placeholder="15">
           <button type="submit" class="btn btn-add">AJOUTER</button>
         </form>
-        <div class="form-hint">Seuil : alerte si le prix baisse de X% (défaut 15)</div>
+        <div class="form-hint">Seuil : alerte si le prix baisse de X% vs prix à l'ajout (défaut 15). Prix = Acheter maintenant</div>
         <div class="error-msg hidden" id="form-error"></div>
         <div class="products-list" id="products-list">
           <div class="empty-state">Chargement...</div>
@@ -785,6 +854,13 @@
         <div class="alerts-list" id="alerts-list">
           <div class="empty-state">Chargement...</div>
         </div>
+      </div>
+    </div>
+
+    <div class="panel scans-panel">
+      <h2 class="panel-title">Historique des scans</h2>
+      <div class="scans-list" id="scans-list">
+        <div class="empty-state">Chargement...</div>
       </div>
     </div>
   </div>
@@ -857,21 +933,21 @@
             const badgeClass = discount >= threshold ? 'high' : discount != null && discount > 0 ? 'positive' : 'neutral';
             const discountStr = discount != null ? `-${discount.toFixed(1)}%` : '—';
             const priceStr = p.last_price != null ? `$${p.last_price.toFixed(2)}` : '—';
-            const medianStr = p.median_30d != null ? `$${p.median_30d.toFixed(2)}` : '—';
+            const refStr = p.reference_price != null ? `$${p.reference_price.toFixed(2)}` : '—';
             const imgUrl = p.image_url || '';
             const thumb = imgUrl
               ? `<img class="product-thumb" src="${escapeHtml(imgUrl)}" alt="${escapeHtml(p.name)}" loading="lazy">`
               : `<div class="product-thumb-placeholder">${getInitials(p.name)}</div>`;
             return `<div class="product-card ${rowClass}" data-slug="${escapeHtml(p.slug)}">
               <div class="product-card-header">
-                ${thumb}
-                <div class="product-info">
-                  <div class="product-name"><a href="https://stockx.com/${escapeHtml(p.slug)}" target="_blank" rel="noopener" class="product-link">${escapeHtml(p.name)}</a></div>
+                <a href="https://stockx.com/${escapeHtml(p.slug)}" target="_blank" rel="noopener" class="product-thumb-link">${thumb}</a>
+                <a href="https://stockx.com/${escapeHtml(p.slug)}" target="_blank" rel="noopener" class="product-info product-link">
+                  <div class="product-name">${escapeHtml(p.name)}</div>
                   <div class="product-prices">
-                    <span class="product-price">${priceStr}</span>
-                    <span class="product-median">Méd. <span>${medianStr}</span></span>
+                    <span class="product-price" title="Prix Acheter maintenant (lowest ask)">${priceStr}</span>
+                    <span class="product-median">Méd. 30j <span>${medianStr}</span></span>
                   </div>
-                </div>
+                </a>
                 <div class="product-actions">
                   <button class="btn btn-edit" data-slug="${escapeHtml(p.slug)}" title="Modifier le seuil">✎</button>
                   <button class="btn btn-delete" data-slug="${escapeHtml(p.slug)}">Supprimer</button>
@@ -909,6 +985,34 @@
       animateCount(document.getElementById('stat-dips'), dips);
     }
 
+    async function loadScans() {
+      try {
+        const data = await fetchJson(`${API_URL}/scans`);
+        const list = document.getElementById('scans-list');
+        if (!data.length) {
+          list.innerHTML = '<div class="empty-state">Aucun scan.</div>';
+        } else {
+          list.innerHTML = data.map(s => {
+            const date = new Date(s.scanned_at).toLocaleString('fr-FR', {
+              day: '2-digit', month: '2-digit', year: 'numeric',
+              hour: '2-digit', minute: '2-digit'
+            });
+            const dipsClass = s.dips_found > 0 ? 'dips' : 'dips zero';
+            return `<div class="scan-row">
+              <span class="scan-date">${date}</span>
+              <span class="scan-stats">
+                <span>${s.products_count} produit(s)</span>
+                <span class="${dipsClass}">${s.dips_found} trou(s) d'air</span>
+              </span>
+            </div>`;
+          }).join('');
+        }
+      } catch (e) {
+        document.getElementById('scans-list').innerHTML =
+          `<div class="empty-state" style="color:var(--accent-red)">Erreur: ${escapeHtml(e.message)}</div>`;
+      }
+    }
+
     async function loadAlerts() {
       try {
         const data = await fetchJson(`${API_URL}/alerts`);
@@ -926,7 +1030,7 @@
               <div class="alert-product"><a href="https://stockx.com/${escapeHtml(a.slug)}" target="_blank">${escapeHtml(a.product_name)}</a></div>
               <div class="alert-prices">
                 <span class="alert-price-current">$${Number(a.alert_price).toFixed(2)}</span>
-                <span class="alert-price-median">Méd. 30j: $${Number(a.median_price).toFixed(2)}</span>
+                <span class="alert-price-median">Prix réf.: $${Number(a.median_price).toFixed(2)}</span>
               </div>
               <div class="alert-discount">-${Number(a.discount_pct).toFixed(1)}%</div>
               <div class="alert-footer">
@@ -1004,6 +1108,7 @@
         document.getElementById('stat-last-scan').textContent = 'Il y a 0 min';
         await loadProducts();
         await loadAlerts();
+        await loadScans();
         startCountdown();
       } catch (e) {
         alert('Erreur scan: ' + e.message);
@@ -1074,6 +1179,7 @@
     (async function init() {
       await loadProducts();
       await loadAlerts();
+      await loadScans();
       startCountdown();
       setInterval(loadProducts, 30000);
     })();
