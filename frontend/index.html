@@ -197,6 +197,17 @@
       border-color: var(--accent-yellow);
     }
 
+    .add-form input[type="number"] {
+      width: 70px;
+      flex: none;
+    }
+
+    .form-hint {
+      padding: 0 20px 12px;
+      font-size: 0.75rem;
+      color: var(--text-dim);
+    }
+
     .btn-add {
       background: var(--accent-green);
       color: var(--bg);
@@ -272,6 +283,24 @@
     .btn-delete:hover {
       color: var(--accent-red);
       border-color: var(--accent-red);
+    }
+
+    .btn-edit {
+      background: transparent;
+      color: var(--text-dim);
+      padding: 2px 6px;
+      font-size: 0.8rem;
+      margin-left: 4px;
+      border: 1px solid var(--border);
+    }
+
+    .btn-edit:hover {
+      color: var(--accent-yellow);
+      border-color: var(--accent-yellow);
+    }
+
+    .threshold-val {
+      color: var(--text-dim);
     }
 
     .empty-state {
@@ -370,8 +399,10 @@
         <h2 class="panel-title">Watchlist</h2>
         <form class="add-form" id="add-form">
           <input type="url" id="url-input" placeholder="https://stockx.com/fr/labubu-the-monsters-zimomo" required>
+          <input type="number" id="threshold-input" min="1" max="99" value="15" title="Seuil % pour alerte" placeholder="15">
           <button type="submit" class="btn btn-add">AJOUTER</button>
         </form>
+        <div class="form-hint">Seuil : alerte si le prix baisse de X% (défaut 15)</div>
         <div class="error-msg hidden" id="form-error"></div>
         <div class="table-wrap">
           <table>
@@ -381,11 +412,12 @@
                 <th>Prix</th>
                 <th>Médiane 30j</th>
                 <th>Discount</th>
+                <th>Seuil</th>
                 <th></th>
               </tr>
             </thead>
             <tbody id="products-tbody">
-              <tr><td colspan="5" class="empty-state">Chargement...</td></tr>
+              <tr><td colspan="6" class="empty-state">Chargement...</td></tr>
             </tbody>
           </table>
         </div>
@@ -465,7 +497,11 @@
     }
 
     function updateStats(products) {
-      const dips = products.filter(p => p.discount_pct != null && p.discount_pct >= 15).length;
+      const dips = products.filter(p => {
+        const discount = p.discount_pct;
+        const threshold = p.dip_threshold != null ? p.dip_threshold : 15;
+        return discount != null && discount >= threshold;
+      }).length;
       document.getElementById('stat-products').textContent = products.length;
       document.getElementById('stat-dips').textContent = dips;
     }
@@ -502,18 +538,37 @@
       return div.innerHTML;
     }
 
-    async function addProduct(url) {
+    async function addProduct(url, threshold) {
       hideFormError();
       try {
         await fetchJson(`${API_URL}/products`, {
           method: 'POST',
-          body: JSON.stringify({ url })
+          body: JSON.stringify({ url, threshold: threshold || 15 })
         });
         document.getElementById('url-input').value = '';
         await loadProducts();
         await loadAlerts();
       } catch (e) {
         showFormError(e.message);
+      }
+    }
+
+    async function editThreshold(slug) {
+      const val = prompt('Nouveau seuil (1-99)?', '15');
+      if (val == null) return;
+      const n = parseInt(val, 10);
+      if (isNaN(n) || n < 1 || n > 99) {
+        alert('Seuil invalide (1-99)');
+        return;
+      }
+      try {
+        await fetchJson(`${API_URL}/products/${encodeURIComponent(slug)}`, {
+          method: 'PATCH',
+          body: JSON.stringify({ threshold: n })
+        });
+        await loadProducts();
+      } catch (e) {
+        alert('Erreur: ' + e.message);
       }
     }
 

@@ -20,6 +20,7 @@ from database import (
     get_product_by_slug,
     get_price_history_30d,
     get_recent_alerts,
+    update_product_threshold,
 )
 from scheduler import get_next_scan_time, scan_all_products, start_scheduler
 
@@ -85,7 +86,7 @@ def startup():
 
 @app.post("/products")
 def post_products(body: dict):
-    """Add a product by StockX URL."""
+    """Add a product by StockX URL. Optional: threshold (default 15) = % discount to trigger alert."""
     url = body.get("url")
     if not url or not isinstance(url, str):
         raise HTTPException(400, "Missing or invalid 'url' in body")
@@ -99,9 +100,39 @@ def post_products(body: dict):
     if existing:
         raise HTTPException(409, f"Product with slug '{slug}' already exists")
 
+    threshold = body.get("threshold")
+    if threshold is not None:
+        try:
+            threshold = float(threshold)
+            if threshold < 1 or threshold > 99:
+                raise ValueError("Threshold must be between 1 and 99")
+        except (TypeError, ValueError):
+            raise HTTPException(400, "Invalid threshold (must be 1-99)")
+    else:
+        threshold = 15
+
     name = _slug_to_name(slug)
-    product = create_product(slug=slug, name=name)
+    product = create_product(slug=slug, name=name, dip_threshold=threshold)
     return product
+
+
+@app.patch("/products/{slug}")
+def patch_product_threshold(slug: str, body: dict):
+    """Update the alert threshold for a product."""
+    threshold = body.get("threshold")
+    if threshold is None:
+        raise HTTPException(400, "Missing 'threshold' in body")
+    try:
+        threshold = float(threshold)
+        if threshold < 1 or threshold > 99:
+            raise ValueError("Threshold must be between 1 and 99")
+    except (TypeError, ValueError):
+        raise HTTPException(400, "Invalid threshold (must be 1-99)")
+
+    updated = update_product_threshold(slug, threshold)
+    if not updated:
+        raise HTTPException(404, f"Product '{slug}' not found")
+    return {"ok": True}
 
 
 @app.delete("/products/{slug}")

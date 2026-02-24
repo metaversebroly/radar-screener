@@ -20,7 +20,7 @@ from database import (
 )
 from retailed import rate_limited_get_lowest_ask
 
-DIP_THRESHOLD = float(os.getenv("DIP_THRESHOLD", "15"))
+DEFAULT_DIP_THRESHOLD = float(os.getenv("DIP_THRESHOLD", "15"))
 ANTI_SPAM_HOURS = 6
 
 logger = logging.getLogger(__name__)
@@ -55,7 +55,8 @@ async def _scan_product(product: dict) -> tuple[bool, bool]:
 
     discount_pct = (median_price - price) / median_price * 100
 
-    if discount_pct >= DIP_THRESHOLD:
+    threshold = float(product.get("dip_threshold") or DEFAULT_DIP_THRESHOLD)
+    if discount_pct >= threshold:
         recent = get_recent_alerts_for_product(product_id, ANTI_SPAM_HOURS)
         if not recent:
             alert_data = {

@@ -24,6 +24,7 @@ CREATE TABLE products (
   id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   slug text UNIQUE NOT NULL,
   name text NOT NULL,
+  dip_threshold numeric DEFAULT 15,
   created_at timestamp DEFAULT now()
 );
 
@@ -46,7 +47,12 @@ CREATE TABLE alerts (
 );
 ```
 
-Récupérer `SUPABASE_URL` et `SUPABASE_KEY` (anon/public) dans Settings → API.
+**Si la table `products` existe déjà**, ajouter la colonne seuil :
+```sql
+ALTER TABLE products ADD COLUMN IF NOT EXISTS dip_threshold numeric DEFAULT 15;
+```
+
+Récupérer `SUPABASE_URL` et `SUPABASE_KEY` (service_role) dans Settings → API.
 
 ### 2. Telegram
 

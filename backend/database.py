@@ -21,12 +21,19 @@ def get_client() -> Client:
     return _client
 
 
-def create_product(slug: str, name: str) -> dict:
+def create_product(slug: str, name: str, dip_threshold: float = 15) -> dict:
     """Insert a new product and return it."""
     client = get_client()
-    data = {"slug": slug, "name": name}
+    data = {"slug": slug, "name": name, "dip_threshold": dip_threshold}
     result = client.table("products").insert(data).execute()
     return result.data[0]
+
+
+def update_product_threshold(slug: str, dip_threshold: float) -> bool:
+    """Update dip_threshold for a product."""
+    client = get_client()
+    result = client.table("products").update({"dip_threshold": dip_threshold}).eq("slug", slug).execute()
+    return len(result.data) > 0
 
 
 def get_product_by_slug(slug: str) -> dict | None:
