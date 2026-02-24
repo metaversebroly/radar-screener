@@ -328,6 +328,15 @@
       font-weight: 700;
     }
 
+    .product-link {
+      color: var(--accent-yellow);
+      text-decoration: none;
+    }
+
+    .product-link:hover {
+      text-decoration: underline;
+    }
+
     .product-prices {
       display: flex;
       gap: 16px;
@@ -857,7 +866,7 @@
               <div class="product-card-header">
                 ${thumb}
                 <div class="product-info">
-                  <div class="product-name">${escapeHtml(p.name)}</div>
+                  <div class="product-name"><a href="https://stockx.com/${escapeHtml(p.slug)}" target="_blank" rel="noopener" class="product-link">${escapeHtml(p.name)}</a></div>
                   <div class="product-prices">
                     <span class="product-price">${priceStr}</span>
                     <span class="product-median">Méd. <span>${medianStr}</span></span>
