@@ -9,6 +9,8 @@ from typing import Any
 import httpx
 
 RETAILED_API_KEY = os.getenv("RETAILED_API_KEY")
+RETAILED_CURRENCY = os.getenv("RETAILED_CURRENCY", "EUR")
+RETAILED_COUNTRY = os.getenv("RETAILED_COUNTRY", "FR")
 RATE_LIMIT_DELAY = 2  # seconds between requests
 
 logger = logging.getLogger(__name__)
@@ -24,7 +26,7 @@ async def get_lowest_ask(slug: str) -> float | None:
         return None
 
     url = "https://app.retailed.io/api/v1/scraper/stockx/product"
-    params = {"query": slug, "currency": "USD", "country": "US"}
+    params = {"query": slug, "currency": RETAILED_CURRENCY, "country": RETAILED_COUNTRY}
     headers = {"x-api-key": RETAILED_API_KEY}
 
     try:

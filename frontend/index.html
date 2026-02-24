@@ -424,6 +424,24 @@
       border-color: var(--accent-yellow);
     }
 
+    .btn-stockx-small {
+      display: inline-block;
+      padding: 8px 14px;
+      background: var(--accent-yellow);
+      color: var(--bg);
+      font-size: 0.8rem;
+      font-weight: 700;
+      text-decoration: none;
+      border-radius: 4px;
+      border: none;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-stockx-small:hover {
+      background: #fff9a0;
+    }
+
     .threshold-val { color: var(--text-dim); font-size: 0.85rem; }
 
     /* Alerts */
@@ -932,8 +950,8 @@
             const rowClass = discount >= threshold ? 'dip-high' : discount >= 8 ? 'dip-medium' : '';
             const badgeClass = discount >= threshold ? 'high' : discount != null && discount > 0 ? 'positive' : 'neutral';
             const discountStr = discount != null ? `-${discount.toFixed(1)}%` : '—';
-            const priceStr = p.last_price != null ? `$${p.last_price.toFixed(2)}` : '—';
-            const refStr = p.reference_price != null ? `$${p.reference_price.toFixed(2)}` : '—';
+            const priceStr = p.last_price != null ? `€${p.last_price.toFixed(2)}` : '—';
+            const refStr = p.reference_price != null ? `€${p.reference_price.toFixed(2)}` : '—';
             const imgUrl = p.image_url || '';
             const thumb = imgUrl
               ? `<img class="product-thumb" src="${escapeHtml(imgUrl)}" alt="${escapeHtml(p.name)}" loading="lazy">`
@@ -945,10 +963,11 @@
                   <div class="product-name">${escapeHtml(p.name)}</div>
                   <div class="product-prices">
                     <span class="product-price" title="Prix Acheter maintenant (lowest ask)">${priceStr}</span>
-                    <span class="product-median">Méd. 30j <span>${medianStr}</span></span>
+                    <span class="product-median">Réf. <span>${refStr}</span></span>
                   </div>
                 </a>
                 <div class="product-actions">
+                  <a href="https://stockx.com/${escapeHtml(p.slug)}" target="_blank" rel="noopener" class="btn btn-stockx-small">Voir StockX</a>
                   <button class="btn btn-edit" data-slug="${escapeHtml(p.slug)}" title="Modifier le seuil">✎</button>
                   <button class="btn btn-delete" data-slug="${escapeHtml(p.slug)}">Supprimer</button>
                 </div>
@@ -1029,8 +1048,8 @@
             return `<div class="alert-card ${isRecent ? 'recent' : ''}">
               <div class="alert-product"><a href="https://stockx.com/${escapeHtml(a.slug)}" target="_blank">${escapeHtml(a.product_name)}</a></div>
               <div class="alert-prices">
-                <span class="alert-price-current">$${Number(a.alert_price).toFixed(2)}</span>
-                <span class="alert-price-median">Prix réf.: $${Number(a.median_price).toFixed(2)}</span>
+                <span class="alert-price-current">€${Number(a.alert_price).toFixed(2)}</span>
+                <span class="alert-price-median">Prix réf.: €${Number(a.median_price).toFixed(2)}</span>
               </div>
               <div class="alert-discount">-${Number(a.discount_pct).toFixed(1)}%</div>
               <div class="alert-footer">
