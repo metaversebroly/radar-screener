@@ -168,7 +168,15 @@ def post_scan():
 def get_health():
     """Health check with next scan time."""
     next_scan = get_next_scan_time()
+    if next_scan:
+        ts = next_scan.isoformat()
+        if ts.endswith("+00:00"):
+            ts = ts[:-6] + "Z"
+        elif "Z" not in ts and "+" not in ts:
+            ts = ts + "Z"
+    else:
+        ts = None
     return {
         "status": "ok",
-        "next_scan": next_scan.isoformat() + "Z" if next_scan else None,
+        "next_scan": ts,
     }

@@ -1022,6 +1022,10 @@
           }
           const next = new Date(h.next_scan);
           const now = new Date();
+          if (isNaN(next.getTime())) {
+            document.getElementById('countdown').textContent = '--:--:--';
+            return;
+          }
           if (next <= now) {
             document.getElementById('countdown').textContent = 'En cours...';
             return;
