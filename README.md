@@ -2,13 +2,23 @@
 
 Screener de prix StockX pour détecter les "trous d'air" (chutes de prix anormales) sur des jouets/collectibles (Labubu, etc.).
 
+**Live demo :** [radar-screenerx.vercel.app](https://radar-screenerx.vercel.app)
+
+## Fonctionnalités
+
+- 📦 Watchlist de produits StockX (Labubu, sneakers, etc.)
+- 📉 Détection des chutes de prix (trou d'air) par rapport à la médiane 30j
+- 🔔 Alertes Telegram en temps réel
+- ⚙️ Seuil de discount personnalisable par produit (1–99 %)
+- 📱 Interface responsive (mobile, tablette, desktop)
+
 ## Stack
 
 - **Frontend** : HTML/CSS/JS vanilla → Vercel
 - **Backend** : Python FastAPI → Railway
 - **Base de données** : Supabase (PostgreSQL)
 - **Scraping** : Retailed.io API
-- **Alertes** : Telegram bot (@RadarStockX_bot)
+- **Alertes** : Telegram bot
 - **Scheduler** : APScheduler, scan toutes les 6 heures
 
 ---
@@ -64,9 +74,11 @@ Récupérer `SUPABASE_URL` et `SUPABASE_KEY` (service_role) dans Settings → AP
 ### 3. Railway
 
 1. Connecter le repo GitHub à [Railway](https://railway.app)
-2. Créer un nouveau service et sélectionner le dossier `backend/`
-3. **Start command** : `uvicorn main:app --host 0.0.0.0 --port $PORT`
-4. Ajouter les variables d'environnement :
+2. Créer un nouveau service et sélectionner le repo
+3. **Root Directory** : `backend` (important pour monorepo)
+4. **Start command** : `uvicorn main:app --host 0.0.0.0 --port $PORT`
+5. **Port** : 8000 (dans Settings → Networking si demandé)
+6. Ajouter les variables d'environnement :
    - `RETAILED_API_KEY`
    - `SUPABASE_URL`
    - `SUPABASE_KEY`
@@ -74,19 +86,20 @@ Récupérer `SUPABASE_URL` et `SUPABASE_KEY` (service_role) dans Settings → AP
    - `TELEGRAM_CHAT_ID`
    - `DIP_THRESHOLD` (optionnel, défaut 15)
    - `PORT` (géré par Railway)
-5. Déployer et copier l’URL générée (ex: `https://ton-app.railway.app`)
+7. Générer un domaine dans Settings → Networking
+8. Copier l’URL générée (ex: `https://radar-screener-production.up.railway.app`)
 
 ### 4. Vercel
 
 1. Connecter le repo GitHub à [Vercel](https://vercel.com)
 2. Configurer le projet :
    - **Root Directory** : `.` (racine du repo)
-   - **Build Output** : le fichier `frontend/index.html` doit être servi
-3. Dans `frontend/index.html`, remplacer `API_URL` par l’URL Railway :
+   - Le `vercel.json` redirige toutes les routes vers `/frontend/index.html`
+3. Dans `frontend/index.html`, remplacer `API_URL` par ton URL Railway :
    ```js
-   const API_URL = 'https://ton-app.railway.app';  // ton URL Railway
+   const API_URL = 'https://ton-url.up.railway.app';
    ```
-4. Redéployer
+4. Déployer (chaque push déclenche un redéploiement auto)
 
 ### 5. Test final
 
@@ -103,7 +116,7 @@ Récupérer `SUPABASE_URL` et `SUPABASE_KEY` (service_role) dans Settings → AP
 |----------|-------------|
 | `RETAILED_API_KEY` | Clé API Retailed.io |
 | `SUPABASE_URL` | URL du projet Supabase |
-| `SUPABASE_KEY` | Clé anon Supabase |
+| `SUPABASE_KEY` | Clé service_role Supabase |
 | `TELEGRAM_BOT_TOKEN` | Token du bot Telegram |
 | `TELEGRAM_CHAT_ID` | ID du chat pour les alertes |
 | `DIP_THRESHOLD` | Seuil de discount pour alerte (défaut: 15) |
