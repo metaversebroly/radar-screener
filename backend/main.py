@@ -1,0 +1,143 @@
+"""
+RADAR - StockX price screener API.
+FastAPI backend for detecting price dips on collectibles.
+"""
+from dotenv import load_dotenv
+
+load_dotenv()
+
+import logging
+import re
+from datetime import datetime
+
+from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+
+from database import (
+    create_product,
+    delete_product,
+    get_all_products,
+    get_product_by_slug,
+    get_price_history_30d,
+    get_recent_alerts,
+)
+from scheduler import get_next_scan_time, scan_all_products, start_scheduler
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+app = FastAPI(title="RADAR Screener API")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Extract slug from StockX URL: .../product-name or .../fr/product-name
+SLUG_PATTERN = re.compile(r"stockx\.com/(?:[a-z]{2}/)?([a-zA-Z0-9-]+)(?:\?|$|/)")
+
+
+def _slug_from_url(url: str) -> str | None:
+    match = SLUG_PATTERN.search(url)
+    return match.group(1) if match else None
+
+
+def _slug_to_name(slug: str) -> str:
+    """Convert slug to display name (e.g. labubu-the-monsters-zimomo -> Labubu The Monsters Zimomo)."""
+    return " ".join(word.capitalize() for word in slug.split("-"))
+
+
+def _compute_median(prices: list[dict]) -> float | None:
+    if not prices:
+        return None
+    values = sorted(float(p["price"]) for p in prices if p.get("price") is not None)
+    if not values:
+        return None
+    n = len(values)
+    return (values[n // 2] + values[(n - 1) // 2]) / 2 if n else None
+
+
+def _enrich_product(product: dict) -> dict:
+    """Add last_price, median_30d, discount_pct to product."""
+    history = get_price_history_30d(product["id"])
+    median_price = _compute_median(history)
+    last_price = float(history[-1]["price"]) if history else None
+
+    discount_pct = None
+    if last_price is not None and median_price is not None and median_price > 0:
+        discount_pct = (median_price - last_price) / median_price * 100
+
+    return {
+        **product,
+        "last_price": last_price,
+        "median_30d": median_price,
+        "discount_pct": discount_pct,
+    }
+
+
+@app.on_event("startup")
+def startup():
+    start_scheduler()
+
+
+@app.post("/products")
+def post_products(body: dict):
+    """Add a product by StockX URL."""
+    url = body.get("url")
+    if not url or not isinstance(url, str):
+        raise HTTPException(400, "Missing or invalid 'url' in body")
+
+    slug = _slug_from_url(url)
+    if not slug:
+        raise HTTPException(400, "Could not extract product slug from URL")
+
+    existing = get_product_by_slug(slug)
+
+    if existing:
+        raise HTTPException(409, f"Product with slug '{slug}' already exists")
+
+    name = _slug_to_name(slug)
+    product = create_product(slug=slug, name=name)
+    return product
+
+
+@app.delete("/products/{slug}")
+def delete_products(slug: str):
+    """Delete product and its price history."""
+    deleted = delete_product(slug)
+    if not deleted:
+        raise HTTPException(404, f"Product '{slug}' not found")
+    return {"ok": True}
+
+
+@app.get("/products")
+def get_products():
+    """Get all products with last price, median 30d, discount_pct."""
+    products = get_all_products()
+    return [_enrich_product(p) for p in products]
+
+
+@app.get("/alerts")
+def get_alerts():
+    """Get the 50 most recent alerts."""
+    return get_recent_alerts(50)
+
+
+@app.post("/scan")
+def post_scan():
+    """Trigger an immediate scan. Returns {scanned, dips_found}."""
+    result = scan_all_products()
+    return result
+
+
+@app.get("/health")
+def get_health():
+    """Health check with next scan time."""
+    next_scan = get_next_scan_time()
+    return {
+        "status": "ok",
+        "next_scan": next_scan.isoformat() + "Z" if next_scan else None,
+    }
