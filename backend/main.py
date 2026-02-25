@@ -25,7 +25,7 @@ from database import (
     insert_price_history,
     update_product_threshold,
 )
-from retailed import get_lowest_ask
+from retailed import get_product_full
 from scheduler import get_next_scan_time, scan_all_products, start_scheduler
 
 logging.basicConfig(level=logging.INFO)
@@ -119,12 +119,16 @@ def post_products(body: dict):
     else:
         threshold = 15
 
-    name = _slug_to_name(slug)
     import asyncio
-    price = asyncio.run(get_lowest_ask(slug))
-    if price is None:
+    data = asyncio.run(get_product_full(slug))
+    if data is None:
         raise HTTPException(502, "Impossible de récupérer le prix StockX (Retailed API)")
-    product = create_product(slug=slug, name=name, dip_threshold=threshold, reference_price=price)
+    price = data["price"]
+    name = data.get("name") or _slug_to_name(slug)
+    image_url = data.get("image_url")
+    product = create_product(
+        slug=slug, name=name, dip_threshold=threshold, reference_price=price, image_url=image_url
+    )
     insert_price_history(product["id"], price)
     return product
 

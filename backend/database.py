@@ -21,14 +21,29 @@ def get_client() -> Client:
     return _client
 
 
-def create_product(slug: str, name: str, dip_threshold: float = 15, reference_price: float | None = None) -> dict:
+def create_product(
+    slug: str,
+    name: str,
+    dip_threshold: float = 15,
+    reference_price: float | None = None,
+    image_url: str | None = None,
+) -> dict:
     """Insert a new product and return it. reference_price = prix Acheter maintenant à l'ajout."""
     client = get_client()
     data = {"slug": slug, "name": name, "dip_threshold": dip_threshold}
     if reference_price is not None:
         data["reference_price"] = reference_price
+    if image_url:
+        data["image_url"] = image_url
     result = client.table("products").insert(data).execute()
     return result.data[0]
+
+
+def update_product_image(product_id: str, image_url: str) -> bool:
+    """Update product image_url. Returns True if updated."""
+    client = get_client()
+    result = client.table("products").update({"image_url": image_url}).eq("id", product_id).execute()
+    return len(result.data) > 0
 
 
 def update_product_threshold(slug: str, dip_threshold: float) -> bool:

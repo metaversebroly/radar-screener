@@ -36,6 +36,7 @@ CREATE TABLE products (
   name text NOT NULL,
   dip_threshold numeric DEFAULT 15,
   reference_price numeric,
+  image_url text,
   created_at timestamp DEFAULT now()
 );
 
@@ -69,6 +70,7 @@ CREATE TABLE scans (
 ```sql
 ALTER TABLE products ADD COLUMN IF NOT EXISTS dip_threshold numeric DEFAULT 15;
 ALTER TABLE products ADD COLUMN IF NOT EXISTS reference_price numeric;
+ALTER TABLE products ADD COLUMN IF NOT EXISTS image_url text;
 
 CREATE TABLE IF NOT EXISTS scans (
   id uuid DEFAULT gen_random_uuid() PRIMARY KEY,

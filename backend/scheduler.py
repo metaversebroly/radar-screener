@@ -17,8 +17,9 @@ from database import (
     insert_alert,
     insert_price_history,
     insert_scan,
+    update_product_image,
 )
-from retailed import rate_limited_get_lowest_ask
+from retailed import rate_limited_get_product_full
 
 DEFAULT_DIP_THRESHOLD = float(os.getenv("DIP_THRESHOLD", "15"))
 ANTI_SPAM_HOURS = 6
@@ -36,11 +37,15 @@ async def _scan_product(product: dict) -> tuple[bool, bool]:
     slug = product["slug"]
     name = product.get("name", slug)
 
-    price = await rate_limited_get_lowest_ask(slug)
-    if price is None:
+    data = await rate_limited_get_product_full(slug)
+    if data is None:
         return False, False
 
+    price = data["price"]
     insert_price_history(product_id, price)
+
+    if not product.get("image_url") and data.get("image_url"):
+        update_product_image(product_id, data["image_url"])
 
     reference_price = product.get("reference_price")
     if reference_price is not None:
